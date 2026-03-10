@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build -t $ECR_REPO_URI:latest .
+      - docker tag $ECR_REPO_URI:latest $ECR_REPO_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+  post_build:
+    commands:
+      - echo Pushing image to ECR...
+      - docker push $ECR_REPO_URI:latest
+      - docker push $ECR_REPO_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo Writing image definitions file...
+      - printf '[{"name":"devops-demo","imageUri":"%s"}]' $ECR_REPO_URI:latest > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
